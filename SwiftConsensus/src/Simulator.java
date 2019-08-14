@@ -1,6 +1,5 @@
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -28,59 +27,63 @@ public class Simulator {
 	    return begin;
 	}
 	
-	private void init() {
+	// 初始化模拟网络
+	private void initNet() {
+		nodes.clear();
+		taskQueue.clear();
+		
 		Set<Integer> indexPool = new HashSet<Integer>();
-		for (int i = 0; i < Config.nodeNum; i++) {
-			int index = (int) (Math.random() * Config.indexRange);
+		for (int i = 0; i < Config.NODE_NUM; i++) {
+			int index = (int) (Math.random() * Config.INDEX_RANGE);
 			while(indexPool.contains(index)) {
-				index = (int) (Math.random() * Config.indexRange);
+				index = (int) (Math.random() * Config.INDEX_RANGE);
 			}
 			indexPool.add(index);
-			Node n = new Node(nodes, index, i, taskQueue);
+			Node n = new Node(i, index, nodes, taskQueue);
 			nodes.add(n);
 		}
 		
-		for (int i = 0; i < Config.nodeNum; i++) {
+		for (int i = 0; i < Config.NODE_NUM; i++) {
 			List<Integer> adj = new ArrayList<Integer>();
 			nodes.get(i).setAdj(adj);
 			// 随机生成网络连接
-			double possible[] = new double[Config.nodeNum];
-			double F[] = new double[Config.nodeNum];
+			double possible[] = new double[Config.NODE_NUM];
+			double F[] = new double[Config.NODE_NUM];
 			double total = 0.;
-			for (int j = 0; j < Config.nodeNum; j++) {
+			for (int j = 0; j < Config.NODE_NUM; j++) {
 				if (j == i) possible[j] = 0;
 				else {
 					// 由于是环形，因此距离计算，按照环形计算
 	                double dis = Math.min(Math.abs(nodes.get(i).index - nodes.get(j).index),
-	                		Math.abs(nodes.get(i).index - nodes.get(j).index + Config.indexRange));
+	                		Math.abs(nodes.get(i).index - nodes.get(j).index + Config.INDEX_RANGE));
 	                dis = Math.min(dis,
-	                		Math.abs(nodes.get(i).index - nodes.get(j).index - Config.indexRange));
+	                		Math.abs(nodes.get(i).index - nodes.get(j).index - Config.INDEX_RANGE));
 	                possible[j] = 1 / (dis * dis);
 	                total += possible[j];
 	            }
 			}
 			
-			for (int j = 0; j < Config.nodeNum; j++) {
+			for (int j = 0; j < Config.NODE_NUM; j++) {
 				if (j == 0)
 					F[j] = possible[j] / total;
 				else
 					F[j] = F[j-1] + possible[j] / total;
 			}
 			
-			for (int j = 0; j < Config.linkNum; j++) {
+			for (int j = 0; j < Config.LINK_NUM; j++) {
 				double pos = Math.random();
-				int temp = lower_bound(F, 0, Config.nodeNum - 1, pos);
+				int temp = lower_bound(F, 0, Config.NODE_NUM - 1, pos);
 				if (temp != i && !adj.contains(temp)) {
 					adj.add(temp);
 					possible[temp] = 0;
 				} else {
 					j--;
 					total = 0;
-					for (int x = 0; x < Config.nodeNum; x++) {
+					for (int x = 0; x < Config.NODE_NUM; x++) {
 						total += possible[x];
 					}
 					Arrays.fill(F, 0.);
-					for (int x = 0; x < Config.nodeNum; x++) {
+					for (int x = 0; x < Config.NODE_NUM; x++) {
 	                    if (x != 0)
 	                        F[x] = possible[x] / total + F[x-1];
 	                    else
@@ -91,12 +94,13 @@ public class Simulator {
 		}
 	}
 	
+	
 	private void run() {
 		while(!taskQueue.isEmpty()) {
 			try {
 				Node n = taskQueue.peek();
 				taskQueue.remove();
-				n.transferTx();
+				n.transferTxPackage();
 			}
 			catch(Exception e) {
 				e.printStackTrace();
@@ -104,33 +108,48 @@ public class Simulator {
 		}
 	}
 	
+	
 	public void simulation() {
-		init();
-		double hopCount = 0.;
-		double coverage = 0.;
-		double hop = 0.;
-		for (int i = 0; i < Config.txNum; i++) {
-			if (i % 10 == 0) System.out.println("Transfer tx " + i);
-			Statistic s = new Statistic();
-			int fromId = (int)(Math.random() * Config.nodeNum);
-			Node n = nodes.get(fromId);
-			TxPackage tx = new TxPackage(i, fromId, s, n.index - Config.indexRange / 2,
-					n.index + Config.indexRange / 2, 1);
-			n.setTx(tx);
-			taskQueue.add(n);
-			run();
-			hopCount += tx.getStatistic().getHopCount();
-			coverage += tx.getStatistic().getCoverage();
-			hop += tx.getStatistic().getHop();
+		double aveTxPackageNum = 0.;
+		double aveCoverage = 0.;
+		double aveDelay = 0.;
+		
+		for (int i = 0; i < 10; i++) {
+			double txPackageNum = 0.;
+			double coverage = 0.;
+			double delay = 0.;
+			
+			initNet();	// 随机生成一次连接
+			System.out.println("InitNet finished");
+			
+			for (int j = 0; j < Config.TX_NUM; j++) {
+				Statistic s = new Statistic();
+				int fromId = (int)(Math.random() * Config.NODE_NUM);
+				Node n = nodes.get(fromId);
+				TxPackage tx = new TxPackage(j, fromId, s, n.index - Config.INDEX_RANGE>>1, n.index + Config.INDEX_RANGE>>1, 1);
+				n.setTx(tx);
+				taskQueue.add(n);
+				run();
+				txPackageNum += tx.getStatistic().getTxPackageNum();
+				coverage += tx.getStatistic().getCoverage();
+				delay += tx.getStatistic().getDelay();
+			}
+			
+			aveTxPackageNum += txPackageNum / Config.TX_NUM;
+			aveCoverage += coverage / Config.TX_NUM;
+			aveDelay += delay / Config.TX_NUM;
+			System.out.println("Finished " + 100 * i / 10 + "%");
 		}
-		hopCount /= Config.txNum;
-		coverage /= Config.txNum;
-		hop /= Config.txNum;
-		String result = " NodeCount: " + Config.nodeNum + " "
-				+ "LinkNum: " + Config.linkNum + " "
-				+ "hop count: " + hopCount + " "
-				+ "Max hop: " + hop + " "
-				+ "coverage: " + coverage + "%";
+		
+		aveTxPackageNum /= 10;
+		aveCoverage /= 10;
+		aveDelay /= 10;
+		
+		String result = " NodeCount: " + Config.NODE_NUM + " "
+				+ "LinkNum: " + Config.LINK_NUM + " "
+				+ "TxPackageNum: " + aveTxPackageNum + " "
+				+ "Delay: " + aveDelay + " "
+				+ "coverage: " + aveCoverage + "%";
 		System.out.println(result);
 	}
 }
