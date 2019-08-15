@@ -70,4 +70,10 @@ public class Statistic {
 		}
 		return flag;
 	}
+	
+	public void printTransferNum() {
+		for (int i = 0; i < 30; i++) {
+			System.out.print(" " + layerNodeNum[i]);
+		}
+	}
 }

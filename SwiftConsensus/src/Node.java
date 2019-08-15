@@ -109,7 +109,6 @@ public class Node {
 		}	
 		// 根据节点坐标，进行升序
 		Collections.sort(optionNodes);
-		
 		if (!optionNodes.isEmpty()) {
 			int transferNum = optionNodes.size();
 			int partNum = Math.max(transferNum / districtNum, 1);

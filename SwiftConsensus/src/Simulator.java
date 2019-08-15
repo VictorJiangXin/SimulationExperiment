@@ -58,7 +58,7 @@ public class Simulator {
 	                		Math.abs(nodes.get(i).index - nodes.get(j).index + Config.INDEX_RANGE));
 	                dis = Math.min(dis,
 	                		Math.abs(nodes.get(i).index - nodes.get(j).index - Config.INDEX_RANGE));
-	                possible[j] = 1 / (dis * dis);
+	                possible[j] = 1 / (dis);
 	                total += possible[j];
 	            }
 			}
@@ -114,7 +114,8 @@ public class Simulator {
 		double aveCoverage = 0.;
 		double aveDelay = 0.;
 		
-		for (int i = 0; i < 10; i++) {
+		final int simNum = 1;
+		for (int i = 0; i < simNum; i++) {
 			double txPackageNum = 0.;
 			double coverage = 0.;
 			double delay = 0.;
@@ -138,12 +139,12 @@ public class Simulator {
 			aveTxPackageNum += txPackageNum / Config.TX_NUM;
 			aveCoverage += coverage / Config.TX_NUM;
 			aveDelay += delay / Config.TX_NUM;
-			System.out.println("Finished " + 100 * i / 10 + "%");
+			System.out.println("Finished " + 100 * i / simNum + "%");
 		}
 		
-		aveTxPackageNum /= 10;
-		aveCoverage /= 10;
-		aveDelay /= 10;
+		aveTxPackageNum /= simNum;
+		aveCoverage /= simNum;
+		aveDelay /= simNum;
 		
 		String result = " NodeCount: " + Config.NODE_NUM + " "
 				+ "LinkNum: " + Config.LINK_NUM + " "
